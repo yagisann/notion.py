@@ -11,3 +11,14 @@ class PageParentBuilder(BaseBuilder):
 
     def build(self):
         return self.fields_value["page_id"].model_dump()
+
+class DatabaseParentBuilder(BaseBuilder):
+    fields_setting = {
+        "database_id": {
+            str: lambda x: DatabaseParent(type="database_id", database_id=x),
+            DatabaseParent: lambda x: x
+        }
+    }
+
+    def build(self):
+        return self.fields_value["database_id"].model_dump()

@@ -20,4 +20,7 @@ class Database:
             payload["properties"] = properties.build()
         new_model_data = await self.client.databases.update(**payload)
         self.model = DatabaseModel(**new_model_data)
+    
+    async def create_page(self, builder=None, properties=None):
+        pass
         
