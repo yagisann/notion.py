@@ -1,0 +1,2 @@
+class BuilderExeption(Exception):
+    pass
