@@ -3,8 +3,6 @@ from .database import Database
 from .builders import DatabaseBuilder, DatabasePropertyBuilder, PageParentBuilder
 import logging
 
-
-
 class Client:
 
     def __init__(self, token):
