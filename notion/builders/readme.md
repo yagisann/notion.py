@@ -84,7 +84,7 @@ Notion.py has couple of main feature models, 'Model' and 'Builder'. 'Model' (not
         parent = PageParentBuilder(page_id="e256186b-f566-4e3c-9bb7-bf7f0d4ac20a")
     )
     ```
-
+    ---
 - ### Create page under database
     ```py
     import notion
@@ -106,6 +106,7 @@ Notion.py has couple of main feature models, 'Model' and 'Builder'. 'Model' (not
         properties=properties
     )
     ```
+    ---
 - ### Update page
     ```py
     import notion

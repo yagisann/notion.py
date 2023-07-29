@@ -54,7 +54,7 @@ def new_file(url):
 def new_people(id):
     return PeopleModel(type="people", people=[{"object": "user", "id": x}])
 
-text_perser = {
+text_parser = {
     str: lambda x: [new_text(x).model_dump(include=("text"))],
     Text: lambda x: [x.model_dump(include=("text"))],
     list: text_list_detector,
@@ -75,7 +75,7 @@ file_parser = {
     NotionHostedFile: lambda x: {"external": {"url": x.file.url}},
 }
 
-def files_list_perser(i: list):
+def files_list_parser(i: list):
     out = []
     for file in i:
         if isinstance(file, str):
@@ -88,7 +88,7 @@ def files_list_perser(i: list):
 
 files_parser = {
     str: lambda x: [new_file(url_detector(x))],
-    list: lambda x: files_list_perser(x),
+    list: lambda x: files_list_parser(x),
     NotionHostedFile: lambda x: [x],
     ExternalFile: lambda x: [x],
 }
