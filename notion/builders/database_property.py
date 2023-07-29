@@ -1,5 +1,6 @@
 from .base_builder import *
-from .helper import SelectOptionsBuilder, RollupConfig
+from .helper import SelectOptionsBuilder, RollupConfig, nothing
+from .exceptions import *
 from ..models.database_property import *
 from ..models.base_object import StatusOptions, SelectOptionList
 
@@ -54,7 +55,7 @@ class MultiSelectColumn(BaseDbPropertyBuilder):
     fields_setting = {
         "multi_select": {
             list: lambda x: SelectOptionsBuilder(x),
-            SelectOptionsBuilder: lambda x: x,
+            SelectOptionsBuilder: nothing,
             SelectOptionList: lambda x: SelectOptionsBuilder(x.options),
         }
     }
@@ -67,7 +68,7 @@ class SelectColumn(BaseDbPropertyBuilder):
     fields_setting = {
         "select": {
             list: lambda x: SelectOptionsBuilder(x),
-            SelectOptionsBuilder: lambda x: x,
+            SelectOptionsBuilder: nothing,
             SelectOptionList: lambda x: SelectOptionsBuilder(x.options),
         }
     }
@@ -80,7 +81,7 @@ class StatusColumn(BaseDbPropertyBuilder):
     """Status is not possible to update via the API."""
     fields_setting = {
         "status": {
-            dict: lambda x: x,
+            dict: nothing,
             StatusOptions: lambda x: x.model_dump()
         }
     }
@@ -99,8 +100,8 @@ class RelationColumn(BaseDbPropertyBuilder):
     fields_setting = {
         "relation": {
             str: lambda x: SingleRelationConfig(database_id=x, type="single_property", single_property={}),
-            SingleRelationConfig: lambda x: x,
-            DualRelationConfig: lambda x: x,
+            SingleRelationConfig: nothing,
+            DualRelationConfig: nothing,
         }
     }
     name = "relation"
@@ -112,7 +113,7 @@ class RollupColumn(BaseDbPropertyBuilder):
     fields_setting = {
         "rollup": {
             dict: lambda x: RollupConfig(x),
-            RollupConfig: lambda x: x,
+            RollupConfig: nothing,
         }
     }
     name = "rollup"
@@ -136,7 +137,7 @@ class FormulaColumn(BaseDbPropertyBuilder):
     fields_setting = {
         "formula": {
             str: lambda x: FormulaConfig(expression=x),
-            FormulaConfig: lambda x: x,
+            FormulaConfig: nothing,
         }
     }
     name = "formula"
@@ -149,7 +150,7 @@ class NumberColumn(BaseDbPropertyBuilder):
         "number": {
             str: lambda x: NumberConfig(format=x),
             NumberFormatType: lambda x: NumberConfig(format=x),
-            NumberConfig: lambda x: x,
+            NumberConfig: nothing,
         }
     }
     default_value = {
@@ -181,6 +182,11 @@ class DbColumnsBuilder:
         self._exec_add()
 
     def _exec_add(self):
+        title_column = sum([isinstance(i, TitleColumn) for i in {**self.add_queue, **self.columns}.values()])
+        if not title_column:
+            raise BuilderExeption("TitleColumn should be required.")
+        elif title_column > 1:
+            raise BuilderExeption("Too many TitleColumn. Quantity of TitleColumn should be 1.")
         for name, column in self.add_queue.items():
             self.validate(name, column)
             self.columns[name] = column
@@ -287,7 +293,7 @@ await database.edit(properties=property_builder)
     fields_setting = {
         "columns": {
             dict: lambda x: DbColumnsBuilder(x),
-            DbColumnsBuilder: lambda x: x,
+            DbColumnsBuilder: nothing,
         },
         "model_db": {
             dict: lambda x: DbColumnsBuilder({name: transform_scheme_object(model) for name, model in x.items()})

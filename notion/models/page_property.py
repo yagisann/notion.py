@@ -82,7 +82,7 @@ class RichText(BasePageProperty):
 class Relation(BasePageProperty):
     type: Literal["relation"]
     has_more: bool
-    relation: NotionObjectModel # page relation object that contain id of page
+    relation: list[NotionObjectModel] # page relation object that contain id of page
 
 class Rollup(BasePageProperty):
     type: Literal["rollup"]

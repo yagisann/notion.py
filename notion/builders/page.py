@@ -1,11 +1,11 @@
 from .base_builder import *
 from .page_property import PagePropertyBuilder
-from .helper import icon_parser, file_parser
+from .helper import icon_parser, file_parser, nothing
 
 
 class PageBuilder(BaseBuilder):
     fields_setting = {
-        "archived": {bool: lambda x: x},
+        "archived": {bool: nothing},
         "icon": icon_parser,
         "cover": file_parser,
     }

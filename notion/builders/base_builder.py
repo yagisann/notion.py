@@ -1,7 +1,9 @@
 from typing import Callable
 
-class FieldUndefined:
+class _FieldUndefined:
     pass
+
+FieldUndefined = _FieldUndefined()
 
 class BaseBuilder:
     fields_setting: dict[str, dict[type, Callable]] = dict()
@@ -25,7 +27,7 @@ class BaseBuilder:
             try:
                 self.default_value[key]
             except KeyError:
-                self.default_value[key] = FieldUndefined()
+                self.default_value[key] = FieldUndefined
         self._form_data(kwargs)
     
     def __getitem__(self, key):

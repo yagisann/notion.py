@@ -7,3 +7,6 @@ class Page:
     def __init__(self, *, client, data):
         self.client = client
         self.model = PageModel(**data)
+    
+    async def edit(self, builder, properties):
+        pass

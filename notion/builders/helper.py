@@ -3,15 +3,18 @@ from ..models.emoji import Emoji
 from ..models.database import Database
 from ..models.database_property import RollupFunctionType
 from ..models.base_object import SelectOption
+from ..models.user import BaseUser
 from ..models.enums import Color
 from ..models.file import NotionHostedFile, ExternalFile, File
 
 import emoji
 from urllib.parse import urlparse
 
-def file_detector(i: str):
+nothing = lambda x: x
+
+def url_detector(i: str):
     if len(urlparse(i).scheme):
-        return {"external": {"url": i}}
+        return i
     else:
         raise ValueError("Provided string is not valid url")
 
@@ -42,6 +45,15 @@ def new_text(content):
         }
     )
 
+def new_file(url):
+    return ExternalFile(
+        type="external",
+        external={"url": url}
+    )
+
+def new_people(id):
+    return PeopleModel(type="people", people=[{"object": "user", "id": x}])
+
 text_perser = {
     str: lambda x: [new_text(x).model_dump(include=("text"))],
     Text: lambda x: [x.model_dump(include=("text"))],
@@ -49,7 +61,7 @@ text_perser = {
 }
 
 icon_parser = {
-    type(None): lambda x: x,
+    type(None): nothing,
     str: icon_detector,
     Emoji: lambda x: x.model_dump(include=("emoji")),
     ExternalFile: lambda x: x.model_dump(include=("external")),
@@ -57,12 +69,39 @@ icon_parser = {
 }
 
 file_parser = {
-    type(None): lambda x: x,
-    str: file_detector,
+    type(None): nothing,
+    str: lambda x: {"external": {"url": url_detector(x)}},
     ExternalFile: lambda x: x.model_dump(include=("external")),
     NotionHostedFile: lambda x: {"external": {"url": x.file.url}},
 }
 
+def files_list_perser(i: list):
+    out = []
+    for file in i:
+        if isinstance(file, str):
+            out.append(new_file(url_detector(file)))
+        elif isinstance(file, (ExternalFile, NotionHostedFile,)):
+            out,append(file)
+        else:
+            raise TypeError("file should be types of str, models.ExternalFile, models.NoionHostedFile")
+    return out
+
+files_parser = {
+    str: lambda x: [new_file(url_detector(x))],
+    list: lambda x: files_list_perser(x),
+    NotionHostedFile: lambda x: [x],
+    ExternalFile: lambda x: [x],
+}
+
+def people_list_parser(i: list):
+    out=[]
+    for people in i:
+        if isinstance(people, str):
+            out.append(new_people(people))
+        elif isinstance(people, BaseUser):
+            out.append(people)
+        else:
+            raise TypeError("people should be types of str, models.BaseUser")
 
 class OptionBuilder:
 
@@ -86,7 +125,7 @@ class OptionBuilder:
         else:
             self._color = Color(val).value
     
-    def build(self):
+    def build(self, include_color=True):
         payload = {"name": self.name}
         if self.color:
             payload["color"] = self.color
@@ -106,8 +145,8 @@ class SelectOptionsBuilder:
             else:
                 raise ValueError("SelectOptionsBuilder' argument, 'options' should be list of 'str', 'OptionBuilder', 'SelectOption'")
     
-    def build(self):
-        return [i.build() for i in self.option_list]
+    def build(self, include_color=True):
+        return [i.build(include_color) for i in self.option_list]
 
 class RollupConfig:
 

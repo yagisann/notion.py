@@ -1,4 +1,5 @@
 from .base_builder import *
+from .helper import nothing
 from ..models.user import *
 
 class UserBulider(BaseBuilder):
@@ -25,7 +26,7 @@ class UserBulider(BaseBuilder):
     
     fields_setting = {
         "id": {
-            str: lambda x: x,
+            str: nothing,
             People: lambda x: str(x.id),
             Bot: lambda x: str(x.id),
             BaseUser: lambda x: str(x.id),

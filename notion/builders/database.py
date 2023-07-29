@@ -1,6 +1,6 @@
 from .base_builder import *
 from .database_property import DatabasePropertyBuilder
-from .helper import icon_parser, text_perser, file_parser
+from .helper import icon_parser, text_parser, file_parser, nothing
 
 
 
@@ -35,11 +35,11 @@ await database.edit(builder=builder)
     """
 
     fields_setting = {
-        "title": text_perser,
-        "description": text_perser,
+        "title": text_parser,
+        "description": text_parser,
         "icon": icon_parser,
         "cover": file_parser,
-        "is_inline": {bool: lambda x: x},
+        "is_inline": {bool: nothing},
     }
 
     def build(self):
