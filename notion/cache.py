@@ -33,3 +33,4 @@ class CachedObjects:
     def __contains__(self, obj_id):
         return self.get(obj_id) is not None
 
+cache = Cache()

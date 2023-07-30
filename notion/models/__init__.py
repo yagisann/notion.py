@@ -11,7 +11,6 @@ from .comment import *
 from .file import *
 from .emoji import *
 
-__version__ = "0.1.0"
 
 """
 # Implemented

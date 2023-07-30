@@ -9,14 +9,14 @@ from .builders import (
     PagePropertyBuilder,
     PageParentBuilder,
 )
-from .cache import Cache
+from .cache import cache
 
 class Client:
 
     def __init__(self, token):
         self.token = token
         self.client = AsyncClient(auth=token)
-        self.client.cache = Cache()
+        self.client.cache = cache
         self.cache = self.client.cache
     
     async def fetch_database(self, database_id: str) -> Database:

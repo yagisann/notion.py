@@ -309,7 +309,7 @@ name_link = {
 
 
 class PageValuesBuilder():
-    def __init__(self, values: dict[str, Any], model_db):
+    def __init__(self, values: dict[str, Any], model_db={}):
         self.values = dict()
         self.model_db = {name: column.type for name, column in model_db.items()}
         self.edit_values(values)

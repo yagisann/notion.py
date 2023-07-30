@@ -27,9 +27,6 @@ class Database:
         if key in model_dict:
             return model_dict[key]
         raise KeyError(f"'{self.__class__.__name__}' instance has no property named '{key}'")
-    
-    def __setattr__(self, key, val):
-        raise NotImplementedError()
         
     def __setitem__(self, key, val):
         raise NotImplementedError()
