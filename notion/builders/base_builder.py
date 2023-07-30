@@ -1,7 +1,8 @@
 from typing import Callable
 
 class _FieldUndefined:
-    pass
+    def __bool__(self):
+        return 0
 
 FieldUndefined = _FieldUndefined()
 
@@ -69,7 +70,7 @@ class BaseBuilder:
             fields = [i for i in include if i not in exclude]
         undefined_fields = []
         for key in fields:
-            if isinstance(self.fields_value[key], FieldUndefined):
+            if isinstance(self.fields_value[key], _FieldUndefined):
                 undefined_fields.append(key)
-        if not undefined_fields:
+        if undefined_fields:
             raise ValueError(f"The following field(s) must be specified: {', '.join(undefined_fields)}")

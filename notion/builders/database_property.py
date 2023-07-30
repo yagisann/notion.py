@@ -1,4 +1,4 @@
-from .base_builder import *
+from .base_builder import BaseBuilder, _FieldUndefined
 from .helper import SelectOptionsBuilder, RollupConfig, nothing
 from .exceptions import *
 from ..models.database_property import *
@@ -302,9 +302,9 @@ await database.edit(properties=property_builder)
 
     def _form_data(self, kwargs: dict, initialize: bool=True, ignore_extra=False):
         super()._form_data(kwargs=kwargs, initialize=initialize, ignore_extra=ignore_extra)
-        if isinstance(self.fields_value["columns"], FieldUndefined):
+        if isinstance(self.fields_value["columns"], _FieldUndefined):
             self.fields_value["columns"] = self.fields_value["model_db"]
-        if isinstance(self.fields_value["columns"], FieldUndefined):
+        if isinstance(self.fields_value["columns"], _FieldUndefined):
             raise ValueError("One of columns, model_db argument must be provided.")
         return self
     

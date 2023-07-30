@@ -1,31 +1,32 @@
-from .base_builder import *
+from .base_builder import BaseBuilder, _FieldUndefined
+from .user import UserBuilder
 from .exceptions import *
-from .helper import SelectOptionsBuilder, OptionBuilder, text_parser, files_parser, people_list_parser, url_detector, nothing
+from .helper import SelectOptionsBuilder, OptionBuilder, text_parser, files_parser, url_detector, nothing
 
-from ..models.base_object import StatusOptions, SelectOptionList, SelectOption, DateObject. EmailObject
+from ..models.base_object import StatusOptions, SelectOptionList, SelectOption, DateObject, EmailObject
 from ..models.base_model import NotionObjectModel
 from ..models.file import ExternalFile
 from ..models.page_property import (
-    Checkbox as CheckboxModel
-    CreatedBy as CreatedByModel
-    CreatedTime as CreatedTimeModel
-    Date as DateModel
-    Email as EmailModel
-    Files as FilesModel
-    Formula as FormulaModel
-    LastEditedBy as LastEditedByModel
-    LastEditedTime as LastEditedTimeModel
-    MultiSelect as MultiSelectModel
-    Number as NumberModel
-    People as PeopleModel
-    PhoneNumber as PhoneNumberModel
-    Relation as RelationModel
-    Rollup as RollupModel
-    RichText as RichTextModel
-    Select as SelectModel
-    Status as StatusModel
-    Title as TitleModel
-    Url as UrlModel
+    Checkbox as CheckboxModel,
+    CreatedBy as CreatedByModel,
+    CreatedTime as CreatedTimeModel,
+    Date as DateModel,
+    Email as EmailModel,
+    Files as FilesModel,
+    Formula as FormulaModel,
+    LastEditedBy as LastEditedByModel,
+    LastEditedTime as LastEditedTimeModel,
+    MultiSelect as MultiSelectModel,
+    Number as NumberModel,
+    People as PeopleModel,
+    PhoneNumber as PhoneNumberModel,
+    Relation as RelationModel,
+    Rollup as RollupModel,
+    RichText as RichTextModel,
+    Select as SelectModel,
+    Status as StatusModel,
+    Title as TitleModel,
+    Url as UrlModel,
 )
 
 from datetime import datetime as dt
@@ -76,12 +77,12 @@ class MultiSelect(BasePagePropertyBuilder):
     updatable = True
 
     def get_payload(self):
-        return {"options": self.fields_value["multi_select"].build(include_color=False)}
+        return self.fields_value["multi_select"].build(include_color=False)
 
 class Select(BasePagePropertyBuilder):
     fields_setting = {
         "select": {
-            str: lambda OptionBuilder(x),
+            str: lambda x: OptionBuilder(x),
             OptionBuilder: nothing,
             SelectOption: lambda x: OptionBuilder(x.name),
             SelectModel: lambda x: OptionBuilder(x.select.name), 
@@ -91,12 +92,12 @@ class Select(BasePagePropertyBuilder):
     updatable = True
 
     def get_payload(self):
-        return {"options": self.fields_value["select"].build(include_color=False)}
+        return self.fields_value["select"].build(include_color=False)
 
 class Status(BasePagePropertyBuilder):
     fields_setting = {
         "status": {
-            str: lambda OptionBuilder(x),
+            str: lambda x: OptionBuilder(x),
             OptionBuilder: nothing,
             SelectOption: lambda x: OptionBuilder(x.name),
             StatusModel: lambda x: OptionBuilder(x.status.name), 
@@ -110,7 +111,7 @@ class Status(BasePagePropertyBuilder):
 
 class Title(BasePagePropertyBuilder):
     fields_setting = {
-        "title": {**text_parser, **{TitleModel: lambda x: x.model_dump()["title"]}},
+        "title": {**text_parser, **{TitleModel: lambda x: x.model_dump(exclude=("id"))["title"]}},
     }
     name = "title"
     updatable = True
@@ -120,7 +121,7 @@ class Title(BasePagePropertyBuilder):
 
 class RichText(BasePagePropertyBuilder):
     fields_setting = {
-        "rich_text": {**text_parser, **{RichTextModel: lambda x: x.model_dump()["rich_text"]}},
+        "rich_text": {**text_parser, **{RichTextModel: lambda x: x.model_dump(exclude=("id"))["rich_text"]}},
     }
     name = "rich_text"
     updatable = True
@@ -140,10 +141,10 @@ class Relation(BasePagePropertyBuilder):
     updatable = True
 
     def get_payload(self):
-        return [i.model_dump() for i in self.fields_value["relation"]]
+        return [i.model_dump(exclude=("id")) for i in self.fields_value["relation"]]
 
 class Rollup(BasePagePropertyBuilder):
-    fields_setting = {RollUpModel: nothing}
+    fields_setting = {RollupModel: nothing}
     name = "rollup"
     updatable = False
 
@@ -163,7 +164,7 @@ class Checkbox(BasePagePropertyBuilder):
 class Date(BasePagePropertyBuilder):
     fields_setting = {
         "date": {
-            dt: lambda x: DateObject(start=x),
+            dt: lambda x: DateObject(start=x, end=None, time_zone=None),
             DateObject: nothing,
             DateModel: lambda x: x.date,
         }
@@ -172,7 +173,7 @@ class Date(BasePagePropertyBuilder):
     updatable = True
 
     def get_payload(self):
-        return self.fields_value["date"].model_dump()
+        return self.fields_value["date"].model_dump(exclude=("id"))
 
 class Email(BasePagePropertyBuilder):
     fields_setting = {
@@ -222,16 +223,16 @@ class Number(BasePagePropertyBuilder):
 class People(BasePagePropertyBuilder):
     fields_setting = {
         "people": {
-            str: lambda x: PeopleModel(type="people", people=[{"object": "user", "id": x}]),
-            list: lambda x: people_list_parser(x),
-            PeopleModel: nothing,
+            str: lambda x: [UserBuilder(id=x)],
+            list: lambda x: [UserBuilder(id=i) for i in x],
+            PeopleModel: lambda x: x.people,
         }
     }
     name = "people"
     updatable = True
 
     def get_payload(self):
-        return [i.model_dump() for i in self.fields_value["people"]]
+        return [i.build() for i in self.fields_value["people"]]
 
 class PhoneNumber(BasePagePropertyBuilder):
     fields_setting = {
@@ -261,54 +262,90 @@ class Url(BasePagePropertyBuilder):
 
 
 class_link = {
-    CheckboxModel: Checkbox
-    CreatedByModel: CreatedBy
-    CreatedTimeModel: CreatedTime
-    DateModel: Date
-    EmailModel: Email
-    FilesModel: Files
-    FormulaModel: Formula
-    LastEditedByModel: LastEditedBy
-    LastEditedTimeModel: LastEditedTime
-    MultiSelectModel: MultiSelect
-    NumberModel: Number
-    PeopleModel: People
-    PhoneNumberModel: PhoneNumber
-    RelationModel: Relation
-    RollupModel: Rollup
-    RichTextModel: RichText
-    SelectModel: Select
-    StatusModel: Status
-    TitleModel: Title
-    UrlModel: Url
+    CheckboxModel: Checkbox,
+    CreatedByModel: CreatedBy,
+    CreatedTimeModel: CreatedTime,
+    DateModel: Date,
+    EmailModel: Email,
+    FilesModel: Files,
+    FormulaModel: Formula,
+    LastEditedByModel: LastEditedBy,
+    LastEditedTimeModel: LastEditedTime,
+    MultiSelectModel: MultiSelect,
+    NumberModel: Number,
+    PeopleModel: People,
+    PhoneNumberModel: PhoneNumber,
+    RelationModel: Relation,
+    RollupModel: Rollup,
+    RichTextModel: RichText,
+    SelectModel: Select,
+    StatusModel: Status,
+    TitleModel: Title,
+    UrlModel: Url,
+}
+
+name_link = {
+    "checkbox": Checkbox,
+    "created_by": CreatedBy,
+    "created_time": CreatedTime,
+    "date": Date,
+    "email": Email,
+    "files": Files,
+    "formula": Formula,
+    "last_edited_by": LastEditedBy,
+    "last_edited_time": LastEditedTime,
+    "multi_select": MultiSelect,
+    "number": Number,
+    "people": People,
+    "phone_number": PhoneNumber,
+    "relation": Relation,
+    "rollup": Rollup,
+    "rich_text": RichText,
+    "select": Select,
+    "status": Status,
+    "title": Title,
+    "url": Url,
 }
 
 
 class PageValuesBuilder():
-    def __init__(self, values: dict[str, Any]):
-        self.values = values
+    def __init__(self, values: dict[str, Any], model_db):
+        self.values = dict()
+        self.model_db = {name: column.type for name, column in model_db.items()}
+        self.edit_values(values)
 
-    
     def edit_title(self, title_payload):
         for i, j in self.values.items():
             if isinstance(j, Title):
-                self.values[i] = Title(TitleModel(title_payload))
+                self.values[i] = Title(title_payload)
                 return self
+        self.values["title"] = Title(title_payload)
     
     def edit_values(self, new: dict[str, Any]):
         for i, j in new.items():
             if i in self.values:
-                if not self.value[i].updatable:
+                if not self.values[i].updatable:
                     raise BuilderExeption(f"{i} is not updatable.")
                 if type(j) == type(self.values[i]):
-                    self.value[i] = j
+                    self.values[i] = j
                 else:
                     try:
                         self.values[i] = self.values[i].__class__(j)
                     except TypeError as e:
                         raise TypeError(f"Error occured while parsing {i} value.\n details: {e}")
+            elif i in self.model_db:
+                cl = name_link[self.model_db[i]]
+                if not cl.updatable:
+                    raise BuilderExeption(f"{i} is not updatable.")
+                if type(j) == cl:
+                    self.values[i] = j
+                else:
+                    try:
+                        self.values[i] = cl(j)
+                    except TypeError as e:
+                        raise TypeError(f"Error occured while parsing {i} value.\n details: {e}")
             else:
-                raise KeyError(f"{i} is not valid name for page property\navailable names: '{', '.join(self.values.keys())}' ")
+                raise KeyError(f"{i} is not valid name for page property\navailable names: {', '.join(list({**self.model_db, **self.values}.keys()))}")
     
     def build(self):
         return {name: value.build() for name, value in self.values.items() if value.updatable}
@@ -318,21 +355,44 @@ class PagePropertyBuilder(BaseBuilder):
         "model_page": {
             dict: lambda x: PageValuesBuilder({name: class_link[type(model)](model) for name. model in x.items()}),
         },
-        "title": {**text_parser, **{TitleModel: lambda x: x.model_dump()["title"]}},
+        "model_db": {dict: nothing},
+        "title": {str: nothing},
         "values": {
-            dict: lambda x: PageValuesBuilder(x),
+            dict: nothing,
             PageValuesBuilder: nothing,
         },
     }
 
     def _form_data(self, kwargs: dict, initialize: bool=True, ignore_extra=False):
-        super()._form_data(kwargs=kwargs, initialize=initialize, ignore_extra=ignore_extra)
-        if isinstance(self.fields_value["values"], FieldUndefined):
+        if "model_db" in kwargs:
+            self.model_db = kwargs["model_db"]
+        else:
+            self.model_db = {}
+        
+        if initialize:
+            for key in self.fields_setting.keys():
+                self.fields_value[key] = self.default_value[key]
+        for key, val in kwargs.items():
+            if (key in self.fields_setting):
+                if isinstance(val, tuple(self.fields_setting[key].keys())):
+                    if key=="values" and isinstance(val, dict):
+                        self.fields_value[key] = PageValuesBuilder(val, self.model_db)
+                    else:
+                        self.fields_value[key] = self.fields_setting[key][type(val)](val)
+                else:
+                    raise TypeError(f"Type of '{key}' must be one of {tuple(self.fields_setting[key].keys())}")
+            else:
+                if not ignore_extra:
+                    raise KeyError(f"'{key}' is not valid key for {self.__class__.__name__}")
+        
+        if isinstance(self.fields_value["values"], _FieldUndefined):
             self.fields_value["values"] = self.fields_value["model_page"]
-        if isinstance(self.fields_value["values"], FieldUndefined):
-            raise ValueError("One of values, model_page argument must be provided.")
-        if not isinstance(self.fields_value["title"], FieldUndefined):
+        if not isinstance(self.fields_value["title"], _FieldUndefined):
+            if isinstance(self.fields_value["values"], _FieldUndefined):
+                self.fields_value["values"] = PageValuesBuilder({})
             self.fields_value["values"].edit_title(self.fields_value["title"])
+        if isinstance(self.fields_value["values"], _FieldUndefined):
+            raise ValueError("One of 'values', 'model_page' argument must be provided.")
         return self
     
     def edit(self, title=None, values=None):

@@ -23,7 +23,7 @@ Notion.py has couple of main feature models, 'Model' and 'Builder'. 'Model' (not
 - ### Create database
     ```py
     import notion
-    from notion.builder import *
+    from notion.builders import *
 
     project_options = SelectOptionsBuilder([
         "Proj-x",
@@ -53,7 +53,7 @@ Notion.py has couple of main feature models, 'Model' and 'Builder'. 'Model' (not
 - ### Update database
     ```py
     import notion
-    from notion.builder import DatabaseBuilder, DatabasePropertyBuilder
+    from notion.builders import DatabaseBuilder, DatabasePropertyBuilder
 
     client = notion.Client(token="your token here")
     database = await client.fetch_database("42740044-ebe2-432a-8206-d806bfd41689")
@@ -71,7 +71,7 @@ Notion.py has couple of main feature models, 'Model' and 'Builder'. 'Model' (not
 - ### Create page under page
     ```py
     import notion
-    from notion.builder import PageBuilder, PagePropertyBuilder, PageParentBuilder, Title
+    from notion.builders import PageBuilder, PagePropertyBuilder, PageParentBuilder, Title
 
     properties = PagePropertyBuilder(
         title="Page title"
@@ -110,7 +110,7 @@ Notion.py has couple of main feature models, 'Model' and 'Builder'. 'Model' (not
 - ### Update page
     ```py
     import notion
-    from notion.builder import PageBuilder, PagePropertyBuilder
+    from notion.builders import PageBuilder, PagePropertyBuilder
 
     client = notion.Client(token="your token here")
     page = await client.fetch_page("e256186b-f566-4e3c-9bb7-bf7f0d4ac20a")

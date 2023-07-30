@@ -1,6 +1,6 @@
 from .base_builder import *
 from .helper import nothing
-from ..models.parent import PageParent
+from ..models.parent import PageParent, DatabaseParent
 
 class PageParentBuilder(BaseBuilder):
     fields_setting = {

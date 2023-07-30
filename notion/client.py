@@ -16,9 +16,12 @@ class Client:
     def __init__(self, token):
         self.token = token
         self.client = AsyncClient(auth=token)
-        self.cache = Cache()
+        self.client.cache = Cache()
+        self.cache = self.client.cache
     
     async def fetch_database(self, database_id: str) -> Database:
+        if database_id in self.cache.databases:
+            return self.cache.databases.get(database_id)
         data = await self.client.databases.retrieve(database_id=database_id)
         return Database(data=data, client=self.client)
     
@@ -44,6 +47,8 @@ class Client:
 
 
     async def fetch_page(self, page_id: str) -> Page:
+        if page_id in self.cache.pages:
+            return self.cache.pages.get(page_id)
         data = await self.client.pages.retrieve(page_id=page_id)
         return Page(data=data, client=self.client)
     

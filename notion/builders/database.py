@@ -1,4 +1,4 @@
-from .base_builder import *
+from .base_builder import BaseBuilder, _FieldUndefined
 from .database_property import DatabasePropertyBuilder
 from .helper import icon_parser, text_parser, file_parser, nothing
 
@@ -43,4 +43,4 @@ await database.edit(builder=builder)
     }
 
     def build(self):
-        return {i: j for i,j in self.fields_value.items() if not isinstance(j, FieldUndefined)}
+        return {i: j for i,j in self.fields_value.items() if not isinstance(j, _FieldUndefined)}

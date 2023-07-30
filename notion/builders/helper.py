@@ -27,7 +27,7 @@ def icon_detector(i: str):
         raise ValueError("Provided string is not valid url or emoji")
 
 def text_list_detector(i: list[Text]):
-    if all([isinstance(j, Text) for j in i]):
+    if all([isinstance(j, (Text)) for j in i]):
         return [j.model_dump(include=("text")) for j in i]
     else:
         raise ValueError("Provided list should be list of Text object")
@@ -51,8 +51,6 @@ def new_file(url):
         external={"url": url}
     )
 
-def new_people(id):
-    return PeopleModel(type="people", people=[{"object": "user", "id": x}])
 
 text_parser = {
     str: lambda x: [new_text(x).model_dump(include=("text"))],
@@ -93,15 +91,6 @@ files_parser = {
     ExternalFile: lambda x: [x],
 }
 
-def people_list_parser(i: list):
-    out=[]
-    for people in i:
-        if isinstance(people, str):
-            out.append(new_people(people))
-        elif isinstance(people, BaseUser):
-            out.append(people)
-        else:
-            raise TypeError("people should be types of str, models.BaseUser")
 
 class OptionBuilder:
 

@@ -27,8 +27,8 @@ class Page(NotionObjectModel):
     last_edited_time: dt
     last_edited_by: User
     archived: bool
-    icon: ExternalFile | Emoji
-    cover: ExternalFile
+    icon: None | ExternalFile | Emoji
+    cover: None | ExternalFile
     parent: Parent
     url: HttpUrl
     public_url: None | HttpUrl

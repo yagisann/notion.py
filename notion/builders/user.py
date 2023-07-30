@@ -2,7 +2,7 @@ from .base_builder import *
 from .helper import nothing
 from ..models.user import *
 
-class UserBulider(BaseBuilder):
+class UserBuilder(BaseBuilder):
     """
     Usage example:
     ```py
@@ -34,8 +34,7 @@ class UserBulider(BaseBuilder):
     }
     
     def build(self):
-        self.check_fields_exist()
         return {
             "object": "user",
-            "id": fields_value["id"]
+            "id": self.fields_value["id"]
         }

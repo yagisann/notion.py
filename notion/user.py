@@ -1,4 +1,4 @@
-from .model.user import (
+from .models import (
     People as PeoplePayload,
     Bot as BotPayload,
     BaseUser as BaseUserPayload,

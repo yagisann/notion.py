@@ -61,15 +61,15 @@ class LastEditedTime(BasePageProperty):
 
 class MultiSelect(BasePageProperty):
     type: Literal["multi_select"]
-    multi_select: SelectOptionList
+    multi_select: list[SelectOption]
 
 class Select(BasePageProperty):
     type: Literal["select"]
-    select: SelectOption
+    select: SelectOption | None
 
 class Status(BasePageProperty):
     type: Literal["status"]
-    status: SelectOption
+    status: SelectOption | None
 
 class Title(BasePageProperty):
     type: Literal["title"]
@@ -94,11 +94,11 @@ class Checkbox(BasePageProperty):
 
 class Date(BasePageProperty):
     type: Literal["date"]
-    date: DateObject
+    date: DateObject | None
 
 class Email(BasePageProperty):
     type: Literal["email"]
-    email: EmailStr
+    email: EmailStr | None
 
 class Files(BasePageProperty):
     type: Literal["files"]
@@ -110,7 +110,7 @@ class Formula(BasePageProperty):
 
 class Number(BasePageProperty):
     type: Literal["number"]
-    number: int | float
+    number: int | float | None
 
 class People(BasePageProperty):
     type: Literal["people"]
@@ -118,11 +118,11 @@ class People(BasePageProperty):
 
 class PhoneNumber(BasePageProperty):
     type: Literal["phone_number"]
-    phone_number: str
+    phone_number: str | None
 
 class Url(BasePageProperty):
     type: Literal["url"]
-    url: HttpUrl
+    url: HttpUrl | None
 
 
 PageProperty = Union[
