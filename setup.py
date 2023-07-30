@@ -10,7 +10,8 @@ PYTHON_REQUIRES = '>=3.10'
 PACKAGES = [
     'notion',
     'notion.models',
-    'notion.builders'
+    'notion.builders',
+    'notion.notion_client'
 ]
 
 def requirements(fname="./requirements.txt"):
