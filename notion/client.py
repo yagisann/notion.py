@@ -45,7 +45,6 @@ class Client:
         data = await self.client.databases.create(**payload)
         return Database(data=data, client=self.client)
 
-
     async def fetch_page(self, page_id: str) -> Page:
         if page_id in self.cache.pages:
             return self.cache.pages.get(page_id)
