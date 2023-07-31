@@ -3,6 +3,14 @@ from .notion_client.errors import HTTPResponseError, RequestTimeoutError, APIErr
 import random, asyncio
 
 
+class NotionObject():
+    def __init__(self):
+        super().__setattr__("initialized", False)
+        self.model_dict = None
+        self.model = None
+        self.client = None
+    
+
 def pick(base: Dict[Any, Any], *keys: str) -> Dict[Any, Any]:
     """Return a dict composed of key value pairs for keys passed as args."""
     return {key: base[key] for key in keys if key in base}
