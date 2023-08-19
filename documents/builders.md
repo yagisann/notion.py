@@ -5,7 +5,7 @@
 Notion.py has couple of main feature models, 'Model' and 'Builder'. 'Model' (notion.models) is used to perse and validate Notion API payloads. On the other hand, 'Builder' (notion.builders) is used to building request payloads for Notion API.
 
 ## How to build Builders
----
+
 - ### basic instantiation method
     Builder has some fields and you can specify as a keyword arguments as following.
     ```py
@@ -19,14 +19,14 @@ Notion.py has couple of main feature models, 'Model' and 'Builder'. 'Model' (not
     ```
 
 ## Usage example 
----
+
 - ### Create database
     ```py
     import notion
     from notion.builders import *
 
     project_options = SelectOptionsBuilder([
-        "Proj-x",
+        "Proj-x", # color will be set automatically.
         OptionBuilder(name="Proj-Lemon", color="yellow"),
         OptionBuilder(name="Proj-Apple", color="red"),
         OptionBuilder(name="Proj-Melon", color="green"),
@@ -126,6 +126,3 @@ Notion.py has couple of main feature models, 'Model' and 'Builder'. 'Model' (not
 
     await page.edit(properties=property_builder)
     ```
-
----
-## Instantiate Builder
