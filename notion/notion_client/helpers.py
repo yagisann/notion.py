@@ -2,6 +2,17 @@
 from typing import Any, AsyncGenerator, Awaitable, Callable, Dict, Generator, List
 from urllib.parse import urlparse
 from uuid import UUID
+import random
+
+def exponential_backoff(base_sec=1, max_backoff=600):
+    """Exponential backoff and jitter"""
+    attempt = 0
+    while 1:
+        c = base_sec*2**attempt
+        backoff = c if c < max_backoff else max_backoff
+        sleep = backoff + random.uniform(-backoff/10, backoff/10)
+        yield sleep
+        attempt += 1
 
 
 def pick(base: Dict[Any, Any], *keys: str) -> Dict[Any, Any]:

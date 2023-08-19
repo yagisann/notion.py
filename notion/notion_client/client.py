@@ -1,6 +1,7 @@
 """Synchronous and asynchronous clients for Notion's API."""
 import json
 import logging
+import asyncio
 from abc import abstractclassmethod
 from dataclasses import dataclass
 from types import TracebackType
@@ -25,6 +26,7 @@ from .errors import (
 )
 from .logging import make_console_logger
 from .typing import SyncAsync
+from .helpers import exponential_backoff as eb
 
 
 @dataclass
@@ -237,8 +239,19 @@ class AsyncClient(BaseClient):
     ) -> Any:
         """Send an HTTP request asynchronously."""
         request = self._build_request(method, path, query, body, auth)
-        try:
-            response = await self.client.send(request)
-        except httpx.TimeoutException:
-            raise RequestTimeoutError()
-        return self._parse_response(response)
+        backoff = eb()
+        while 1:
+            try:
+                response = await self.client.send(request)
+                return self._parse_response(response)
+            except httpx.TimeoutException:
+                b = backoff.__next__()
+                self.logger.info(f"An error occurred while requesting database. Error: request timeout. retry in {b} seconds.")
+                await asyncio.sleep(b)
+            except HTTPResponseError as e:
+                if 400 <= e.status < 429:
+                    raise e
+                b = backoff.__next__()
+                self.logger.info(f"An error occurred while requesting database. Error: {e}. retry in {b} seconds.")
+                await asyncio.sleep(b)
+
