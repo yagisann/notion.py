@@ -83,7 +83,7 @@ class Database(NotionObject):
     
     def set_page_key_callback(self, callback):
         self.page_key_callback = callback
-        self.pages = {callback(page) for page in self.pages.values()}
+        self.pages = {callback(page): page for page in self.pages.values()}
         return self
     
     async def fetch_pages(self, filter=None):
