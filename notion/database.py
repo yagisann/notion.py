@@ -48,7 +48,7 @@ class Database(NotionObject):
     
 
     async def update(self):
-        self.model_dict = self.client.databases.retrieve(database_id=self.id)
+        self.model_dict = await self.client.databases.retrieve(database_id=self.id)
         self.model = DatabaseModel(**self.model_dict)
         return self
 

@@ -45,22 +45,22 @@ class BasePagePropertyBuilder(BaseBuilder):
         return {self.name: self.get_payload()}
 
 class CreatedBy(BasePagePropertyBuilder):
-    fields_setting = {CreatedByModel: nothing}
+    fields_setting = {"created_by": {CreatedByModel: nothing}}
     name = "created_by"
     updatable = False
 
 class CreatedTime(BasePagePropertyBuilder):
-    fields_setting = {CreatedTimeModel: nothing}
+    fields_setting = {"created_time": {CreatedTimeModel: nothing}}
     name = "created_time"
     updatable = False
 
 class LastEditedBy(BasePagePropertyBuilder):
-    fields_setting = {LastEditedByModel: nothing}
+    fields_setting = {"last_edited_by": {LastEditedByModel: nothing}}
     name = "last_edited_by"
     updatable = False
 
 class LastEditedTime(BasePagePropertyBuilder):
-    fields_setting = {LastEditedTimeModel: nothing}
+    fields_setting = {"last_edited_time": {LastEditedTimeModel: nothing}}
     name = "last_edited_time"
     updatable = False
 
@@ -144,7 +144,7 @@ class Relation(BasePagePropertyBuilder):
         return [i.model_dump(exclude=("id")) for i in self.fields_value["relation"]]
 
 class Rollup(BasePagePropertyBuilder):
-    fields_setting = {RollupModel: nothing}
+    fields_setting = {"rollup": {RollupModel: nothing}}
     name = "rollup"
     updatable = False
 
@@ -353,7 +353,7 @@ class PageValuesBuilder():
 class PagePropertyBuilder(BaseBuilder):
     fields_setting = {
         "model_page": {
-            dict: lambda x: PageValuesBuilder({name: class_link[type(model)](model) for name. model in x.items()}),
+            dict: lambda x: PageValuesBuilder({name: class_link[type(model)](model) for name, model in x.items()}),
         },
         "model_db": {dict: nothing},
         "title": {str: nothing},
