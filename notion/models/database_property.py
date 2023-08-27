@@ -15,10 +15,14 @@ class SingleRelationConfig(NotionBaseModel):
     type: Literal["single_property"]
     single_property: EmptyObject
 
+class DualProperty(NotionBaseModel):
+    synced_property_name: str
+    synced_property_id: str
+
 class DualRelationConfig(NotionBaseModel):
     database_id: UUID4
     type: Literal["dual_property"]
-    dual_property: EmptyObject
+    dual_property: DualProperty
 
 class RollupFunctionType(Enum):
     average = "average"

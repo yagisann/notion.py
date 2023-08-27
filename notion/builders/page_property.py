@@ -187,7 +187,7 @@ class Email(BasePagePropertyBuilder):
     updatable = True
 
     def get_payload(self):
-        return self.fields_value["email"].model_dump()
+        return self.fields_value["email"].model_dump()["email"]
 
 class Files(BasePagePropertyBuilder):
     fields_setting = {

@@ -33,3 +33,6 @@ class Page(NotionObjectModel):
     url: HttpUrl
     public_url: None | HttpUrl
     properties: dict[str, PageProperty]
+
+    def get_property_values(self):
+        return {i: j.get_value() for i, j in self.properties.items()}

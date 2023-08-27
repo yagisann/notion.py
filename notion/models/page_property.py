@@ -42,6 +42,8 @@ FormulaValues = Union[
 class BasePageProperty(NotionBaseModel):
     id: str
 
+    def get_value(self):
+        return self.__getattribute__(self.type)
 
 class CreatedBy(BasePageProperty):
     type: Literal["created_by"]
@@ -63,22 +65,39 @@ class MultiSelect(BasePageProperty):
     type: Literal["multi_select"]
     multi_select: list[SelectOption]
 
+    def get_value(self):
+        return [i.name for i in super().get_value()]
+
 class Select(BasePageProperty):
     type: Literal["select"]
     select: SelectOption | None
+
+    def get_value(self):
+        val = super().get_value()
+        return None if val is None else val.name
 
 class Status(BasePageProperty):
     type: Literal["status"]
     status: SelectOption | None
 
+    def get_value(self):
+        val = super().get_value()
+        return None if val is None else val.name
+    
 class Title(BasePageProperty):
     type: Literal["title"]
     title: list[RichTextPayload]
+
+    def get_value(self):
+        return "".join([i.plain_text for i in super().get_value()])
 
 class RichText(BasePageProperty):
     type: Literal["rich_text"]
     rich_text: list[RichTextPayload]
 
+    def get_value(self):
+        return "".join([i.plain_text for i in super().get_value()])
+    
 class Relation(BasePageProperty):
     type: Literal["relation"]
     has_more: bool
@@ -123,6 +142,9 @@ class PhoneNumber(BasePageProperty):
 class Url(BasePageProperty):
     type: Literal["url"]
     url: HttpUrl | None
+
+    def get_value(self):
+        return str(super().get_value())
 
 
 PageProperty = Union[
