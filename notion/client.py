@@ -13,9 +13,9 @@ from .cache import cache
 
 class Client:
 
-    def __init__(self, token):
+    def __init__(self, token, loglevel=20):
         self.token = token
-        self.client = AsyncClient(auth=token)
+        self.client = AsyncClient(auth=token, log_level=loglevel)
         self.client.cache = cache
         self.cache = self.client.cache
     

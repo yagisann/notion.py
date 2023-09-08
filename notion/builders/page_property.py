@@ -107,7 +107,7 @@ class Status(BasePagePropertyBuilder):
     updatable = True
     
     def get_payload(self):
-        return self.fields_value["status"].build(include_color=Fale)
+        return self.fields_value["status"].build(include_color=False)
 
 class Title(BasePagePropertyBuilder):
     fields_setting = {
