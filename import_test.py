@@ -11,7 +11,7 @@ import notion.utils
 
 import notion.models
 import notion.models.base_model
-import notion.models.base_object
+import notion.models.general_object
 import notion.models.comment
 import notion.models.database_property
 import notion.models.database
