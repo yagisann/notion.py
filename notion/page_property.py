@@ -225,7 +225,9 @@ class Relation(BasePageProperty):
             for i in r["results"]:
                 self.relation.append(NotionObjectModel(**i["relation"]))
             has_more = r["has_more"]
-            start_cursor = query_finder(r["next_url"])
+            if has_more:
+                start_cursor = query_finder(r["next_url"])
+        return self
 
 
 class Rollup(BasePageProperty):
