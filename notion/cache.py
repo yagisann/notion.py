@@ -1,6 +1,7 @@
 from typing import Any
 from .page import Page
 from .database import Database
+from .exceptions import ClientMissingError
 
 
 class Cache:
@@ -13,6 +14,11 @@ class Cache:
         self.databases = CachedDbObjects(valid_types=(Database), parent=self)
         self.columns = DbColumnsRegister()
         self.client = None
+
+    def __getatribute__(self, v):
+        if all([v == "client", self.client is None]):
+            raise ClientMissingError()
+        return super().__getattribute__(v)
 
     def __repr__(self):
         return f"<notion.Cache; pages: {self.pages.objects}, databases: {self.databases.objects}>"

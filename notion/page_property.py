@@ -5,9 +5,7 @@ This model can be used in GET page requests
 https://developers.notion.com/reference/property-value-object
 """
 from __future__ import annotations
-from notion.base_model import Connect
 from pydantic import EmailStr, HttpUrl
-from .exceptions import ClientMissingError
 from .base_model import NotionObjectModel, NotionBaseModel
 from .general_object import DateObject, PartialSelectOption, SelectOption, SelectOptionList, OptionGroup, StatusOptions
 from .user import User
@@ -19,6 +17,7 @@ from datetime import datetime as dt
 
 if TYPE_CHECKING:
     from .page import Page
+
 
 class BoolFormulaValues(NotionBaseModel):
     type: Literal["boolean"]
@@ -51,19 +50,20 @@ FormulaValues = Union[
 class BasePageProperty(NotionBaseModel):
     id: str
     editable: bool = True
+    is_paginated: bool = False
 
-    def __init__(self, connect: Connect = None, parent: Page = None, **kwargs) -> None:
-        super().__init__(connect, **kwargs)
+    def __init__(self, parent: Page = None, **kwargs) -> None:
+        super().__init__(**kwargs)
         self.parent = parent
         self.belong_to = None
         self.find_column()
 
     def get_value(self):
         return self.__getattribute__(self.type)
-    
+
     def build(self):
         return self.model_dump()
-    
+
     def find_column(self):
         from .cache import cache
         self.belong_to = cache.columns.get(self.id)
@@ -103,14 +103,15 @@ class MultiSelect(BasePageProperty):
 
     def get_value(self):
         return [i.name for i in super().get_value()]
-    
+
     def validate(self, options):
         if self.belong_to:
             col_options = self.belong_to.multi_select.options
             for op in options:
                 if op not in col_options:
-                    raise ValueError("invalid option name for this property. valid option names: "+str([i.name for i in col_options]))
-    
+                    raise ValueError(
+                        "invalid option name for this property. valid option names: "+str([i.name for i in col_options]))
+
     def set_options(self, options: list[str]):
         formed_options = []
         for op in options:
@@ -119,7 +120,8 @@ class MultiSelect(BasePageProperty):
             elif isinstance(op, str):
                 formed_options.append(PartialSelectOption(name=op))
             else:
-                raise TypeError("options should be list of str, ParialSelectOption, SelectOption.")
+                raise TypeError(
+                    "options should be list of str, ParialSelectOption, SelectOption.")
         self.validate(formed_options)
         self.multi_select = formed_options
 
@@ -136,15 +138,17 @@ class Select(BasePageProperty):
         if self.belong_to:
             col_options = self.belong_to.select.options
             if option not in col_options:
-                raise ValueError("invalid option name for this property. valid option names: "+str([i.name for i in col_options]))
-    
+                raise ValueError(
+                    "invalid option name for this property. valid option names: "+str([i.name for i in col_options]))
+
     def set_option(self, option: str):
         if isinstance(option, PartialSelectOption):
             formed_option = option
         elif isinstance(option, str):
             formed_option = PartialSelectOption(name=option)
         else:
-            raise TypeError("options should be list of str, ParialSelectOption, SelectOption.")
+            raise TypeError(
+                "options should be list of str, ParialSelectOption, SelectOption.")
         self.validate(formed_option)
         self.select = formed_option
 
@@ -161,15 +165,17 @@ class Status(BasePageProperty):
         if self.belong_to:
             col_options = self.belong_to.status.options
             if option not in col_options:
-                raise ValueError("invalid option name for this property. valid option names: "+str([i.name for i in col_options]))
-    
+                raise ValueError(
+                    "invalid option name for this property. valid option names: "+str([i.name for i in col_options]))
+
     def set_status(self, option: str):
         if isinstance(option, PartialSelectOption):
             formed_option = option
         elif isinstance(option, str):
             formed_option = PartialSelectOption(name=option)
         else:
-            raise TypeError("options should be list of str, ParialSelectOption, SelectOption.")
+            raise TypeError(
+                "options should be list of str, ParialSelectOption, SelectOption.")
         self.validate(formed_option)
         self.status = formed_option
 
@@ -180,7 +186,7 @@ class Title(BasePageProperty):
 
     def get_value(self):
         return "".join([i.plain_text for i in super().get_value()])
-    
+
     def set_text(self, text: str):
         if isinstance(text, str):
             self.title = Text.new(text)
@@ -203,7 +209,8 @@ class RichText(BasePageProperty):
         elif isinstance(text, RichTextUnion):
             self.title = text
         else:
-            raise TypeError("text should be one of str, Text, MentionText, EquationText.")
+            raise TypeError(
+                "text should be one of str, Text, MentionText, EquationText.")
 
 
 class Relation(BasePageProperty):
@@ -211,12 +218,13 @@ class Relation(BasePageProperty):
     has_more: bool
     # page relation object that contain id of page
     relation: list[NotionObjectModel]
+    is_paginated: bool = True
 
-    async def get_pagenated_items(self):
+    async def get_paginated_items(self):
         if not self.has_more:
             return
-        if client:=self._connect.client is None:
-            raise ClientMissingError()
+        from .cache import cache
+        client = cache.client
         self.relation = []
         start_cursor = {}
         has_more = 1
@@ -228,7 +236,42 @@ class Relation(BasePageProperty):
             if has_more:
                 start_cursor = query_finder(r["next_url"])
         return self
+    
+    @staticmethod
+    def get_notion_object(obj):
+        if isinstance(page, Page):
+            return NotionObjectModel(id=page.id)
+        elif isinstance(page, str):
+            return NotionObjectModel(id=page)
+        else:
+            raise TypeError("page shhould be one of str, Page")
 
+    def add_page(self, page: Page | str = None):
+        from .cache import cache
+        page = self.get_notion_object(page)
+        parent_db = cache.databases.get(self.belong_to.relation.database_id)
+        if parent_db and page in [NotionObjectModel(p.id) for p in parent_db.pages.values()]:
+            self.relation.append(page)
+        return self
+
+    def delete_page(self, page: Page | str = None):
+        try:
+            self.relation.remove(self.get_notion_object(page))
+        except ValueError:
+            pass
+        return self
+    
+    def clear_pages(self):
+        self.relation = []
+        return self
+    
+    def add_pages(self, pages: list[Page | str]):
+        for i in pages:
+            try:
+                self.add_page(i)
+            except TypeError:
+                pass
+        return self
 
 class Rollup(BasePageProperty):
     type: Literal["rollup"]

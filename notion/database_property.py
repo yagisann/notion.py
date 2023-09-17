@@ -5,7 +5,6 @@ https://developers.notion.com/reference/property-object
 https://developers.notion.com/reference/property-schema-object
 """
 from __future__ import annotations
-from notion.base_model import Connect
 from pydantic import field_validator, UUID4, Field
 from .base_model import NotionBaseModel
 from .enums import Color
@@ -144,9 +143,6 @@ class BaseDbProperty(NotionBaseModel):
     name: str
     rename: None | str = Field(default=None, min_length=1)
     remove: bool = False
-
-    def __init__(self, connect: Connect = None, **kwargs) -> None:
-        super().__init__(connect, **kwargs)
 
     @field_validator("remove")
     @classmethod
