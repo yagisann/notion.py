@@ -43,32 +43,11 @@ def json_decoder(obj):
             return j(obj)
     return obj
 
-class Connect:
-    def __init__(
-            self,
-            client: AsyncClient = None
-            ) -> None:
-        if client is None:
-            client = self.get_cached_client()
-        self.client=client
-    
-    @classmethod
-    def get_cached_client(cls):
-        from .cache import cache
-        return cache.client
-
 class NotionBaseModel(BaseModel):
     """
     Custamized base model for this module
     """
     model_config = ConfigDict(validate_assignment=True)
-
-    def __init__(self, connect: Connect = None, **kwargs) -> None:
-        super().__init__(**kwargs)
-        if connect is None:
-            self._connect = Connect()
-        else:
-            self._connect = connect
 
     @model_serializer(mode="wrap")
     def model_serialize(self, _handler, _info) -> dict:
