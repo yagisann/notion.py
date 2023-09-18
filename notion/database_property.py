@@ -7,7 +7,7 @@ https://developers.notion.com/reference/property-schema-object
 from __future__ import annotations
 from pydantic import field_validator, UUID4, Field
 from .base_model import NotionBaseModel
-from .enums import Color
+from .enums import Color, RollupFunctionType
 from .general_object import EmptyObject, SelectOptionList, StatusOptions
 from typing import Literal, Union, Any
 from enum import Enum
@@ -49,34 +49,6 @@ class DualRelationConfig(NotionBaseModel):
 
     def build(self):
         return {**self.model_dump(exclude={"dual_property"}), **{"dual_property": {}}}
-
-
-class RollupFunctionType(Enum):
-    average = "average"
-    checked = "checked"
-    count_per_group = "count_per_group"
-    count = "count"
-    count_values = "count_values"
-    date_range = "date_range"
-    earliest_date = "earliest_date"
-    empty = "empty"
-    latest_date = "latest_date"
-    max = "max"
-    median = "median"
-    min = "min"
-    not_empty = "not_empty"
-    percent_checked = "percent_checked"
-    percent_empty = "percent_empty"
-    percent_not_empty = "percent_not_empty"
-    percent_per_group = "percent_per_group"
-    percent_unchecked = "percent_unchecked"
-    range = "range"
-    unchecked = "unchecked"
-    unique = "unique"
-    show_original = "show_original"
-    show_unique = "show_unique"
-    sum = "sum"
-
 
 class RollupConfig(NotionBaseModel):
     function: RollupFunctionType
@@ -141,8 +113,19 @@ class NumberConfig(NotionBaseModel):
 class BaseDbProperty(NotionBaseModel):
     id: str
     name: str
-    rename: None | str = Field(default=None, min_length=1)
-    remove: bool = False
+    rename: None | str = Field(default=None, min_length=1, exclude=True)
+    remove: None | bool = Field(default=None, exclude=True)
+    is_modified: bool = Field(default=False, exclude=True)
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.check_is_modified()
+    
+    def check_is_modified(self):
+        if self.rename is not None:
+            self.is_modified = True
+        if self.remomve is not None:
+            self.is_modified = True
 
     @field_validator("remove")
     @classmethod
@@ -164,7 +147,7 @@ class BaseDbProperty(NotionBaseModel):
 
     @classmethod
     def new(cls, name: str = ""):
-        return cls(**cls._new.default, id="", name=name)
+        return cls(**cls._new.default, id="", name=name, is_modified=True)
 
 
 class CreatedBy(BaseDbProperty):
@@ -216,10 +199,12 @@ class MultiSelect(BaseDbProperty):
 
     def add_option(self, name: str, color: Color = None):
         self.multi_select.append(name, color)
+        self.is_modified = True
         return self
 
     def delete_option(self, name: str):
         self.multi_select.delete(name)
+        self.is_modified = True
         return self
 
     def get_payload(self):
@@ -239,10 +224,12 @@ class Select(BaseDbProperty):
 
     def add_option(self, name: str, color: Color = None):
         self.select.append(name, color)
+        self.is_modified = True
         return self
 
     def delete_option(self, name: str):
         self.select.delete(name)
+        self.is_modified = True
         return self
 
     def get_payload(self):
@@ -286,6 +273,7 @@ class Relation(BaseDbProperty):
 
     def set_database(self, database_id: str):
         self.relation.database_id = database_id
+        self.is_modified = True
         return self
 
     def set_type(self, type: str):
@@ -293,6 +281,7 @@ class Relation(BaseDbProperty):
             raise ValueError(
                 "Relation type should be one of 'single_property' or 'dual_property'.")
         self.relation = self.relation.switch()
+        self.is_modified = True
         return self
 
     @classmethod
@@ -306,7 +295,7 @@ class Relation(BaseDbProperty):
         else:
             rel = DualRelationConfig(
                 database_id=database_id, type=type, dual_property={})
-        return cls(type="relation", relation=rel, id="", name=name)
+        return cls(type="relation", relation=rel, id="", name=name, is_modified=True)
 
 
 class Rollup(BaseDbProperty):
@@ -315,6 +304,7 @@ class Rollup(BaseDbProperty):
 
     def set_function(self, fn_type: str | RollupFunctionType):
         self.rollup.function = fn_type
+        self.is_modified = True
         return self
 
     def set_relation(self, relation: Relation = None, name: str = None, id: str = None):
@@ -326,6 +316,7 @@ class Rollup(BaseDbProperty):
         else:
             self.rollup.relation_property_name = name
             self.rollup.relation_property_id = id
+        self.is_modified = True
         return self
 
     def set_rollup_item(self, rollup_property: BaseDbProperty = None, name: str = None, id: str = None):
@@ -338,6 +329,7 @@ class Rollup(BaseDbProperty):
         else:
             self.rollup.rollup_property_name = name
             self.rollup.rollup_property_id = id
+        self.is_modified = True
         return self
 
     @classmethod
@@ -350,7 +342,8 @@ class Rollup(BaseDbProperty):
                 relation_property_name=relation.name,
                 rollup_property_id=rollup_property.id,
                 rollup_property_name=rollup_property.name,
-            )
+            ),
+            is_modified=True
         )
 
 
@@ -400,6 +393,7 @@ class Formula(BaseDbProperty):
 
     def set_formula(self, expression: str):
         self.formula.expression = expression
+        self.is_modified = True
         return self
 
     @classmethod
@@ -417,6 +411,7 @@ class Number(BaseDbProperty):
 
     def set_format(self, format: str | NumberFormatType):
         self.number.format = format
+        self.is_modified = True
         return self
 
     @classmethod

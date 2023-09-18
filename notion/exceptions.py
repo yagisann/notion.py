@@ -6,3 +6,9 @@ class UnUpdatableError(NotionBaseException):
 
 class ClientMissingError(NotionBaseException):
     pass
+
+class NotionValidationError(NotionBaseException):
+    pass
+
+class FieldMissingError(NotionBaseException):
+    pass

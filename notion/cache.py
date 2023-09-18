@@ -51,7 +51,7 @@ class CachedDbObjects(CachedObjects):
     def add(self, obj):
         super().add(obj)
         for c in obj.properties.values():
-            self.parent.columns.add()
+            self.parent.columns.add(c)
 
 class DbColumnsRegister:
 

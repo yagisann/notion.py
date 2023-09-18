@@ -5,15 +5,18 @@ This model can be used in GET page requests
 https://developers.notion.com/reference/property-value-object
 """
 from __future__ import annotations
-from pydantic import EmailStr, HttpUrl
+from pydantic import EmailStr, HttpUrl, Field
 from .base_model import NotionObjectModel, NotionBaseModel
-from .general_object import DateObject, PartialSelectOption, SelectOption, SelectOptionList, OptionGroup, StatusOptions
+from .general_object import DateObject, PartialSelectOption, SelectOption, ArrayTypeObject
+from .enums import RollupFunctionType
+from .exceptions import UnUpdatableError
 from .user import User
-from .file import File
+from .file import File, ExternalFile
 from .rich_text import Text, RichText as RichTextUnion
-from .notion_client.helpers import query_finder
+from .utils import query_finder
 from typing import Literal, Union, TYPE_CHECKING
-from datetime import datetime as dt
+from datetime import datetime as dt, timedelta
+from urllib.parse import urlparse
 
 if TYPE_CHECKING:
     from .page import Page
@@ -50,19 +53,29 @@ FormulaValues = Union[
 class BasePageProperty(NotionBaseModel):
     id: str
     editable: bool = True
-    is_paginated: bool = False
+    is_paginated: bool = Field(default=False, exclude=True)
+    is_modified: bool = Field(default=False, exclde=True)
 
-    def __init__(self, parent: Page = None, **kwargs) -> None:
+    def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs)
-        self.parent = parent
+        self.parent = None
         self.belong_to = None
         self.find_column()
+    
+    def __setattr__(self, key, value):
+        if not self.editable:
+            raise UnUpdatableError()
+        super().__setattr__(key, value)
+        self.is_modified = True
 
     def get_value(self):
         return self.__getattribute__(self.type)
 
     def build(self):
         return self.model_dump()
+    
+    def set_parent(self, parent: Page):
+        self.parent = parent
 
     def find_column(self):
         from .cache import cache
@@ -124,6 +137,13 @@ class MultiSelect(BasePageProperty):
                     "options should be list of str, ParialSelectOption, SelectOption.")
         self.validate(formed_options)
         self.multi_select = formed_options
+        self.is_modified = True
+    
+    @classmethod
+    def new(cls, id: str, options: list[str]=[]):
+        c = cls(id=id, type="multi_select", multi_select=[])
+        c.set_options(options)
+        return c
 
 
 class Select(BasePageProperty):
@@ -151,7 +171,14 @@ class Select(BasePageProperty):
                 "options should be list of str, ParialSelectOption, SelectOption.")
         self.validate(formed_option)
         self.select = formed_option
+        self.is_modified = True
 
+    @classmethod
+    def new(cls, id: str, option: str=None):
+        c = cls(id=id, type="select", select=None)
+        if c is not None:
+            c.set_option(option)
+        return c
 
 class Status(BasePageProperty):
     type: Literal["status"]
@@ -178,7 +205,15 @@ class Status(BasePageProperty):
                 "options should be list of str, ParialSelectOption, SelectOption.")
         self.validate(formed_option)
         self.status = formed_option
+        self.is_modified = True
 
+    @classmethod
+    def new(cls, id: str, status: str=None):
+        c = cls(id=id, type="status", status=None)
+        if c is not None:
+            c.set_status(status)
+        return c
+    
 
 class Title(BasePageProperty):
     type: Literal["title"]
@@ -194,7 +229,13 @@ class Title(BasePageProperty):
             self.title = text
         else:
             raise TypeError("text should be one of str, Text")
+        self.is_modified = True
 
+    @classmethod
+    def new(cls, id: str, title: str="title"):
+        c = cls(id=id, type="title", title=[])
+        c.set_text(title)
+        return c
 
 class RichText(BasePageProperty):
     type: Literal["rich_text"]
@@ -211,7 +252,14 @@ class RichText(BasePageProperty):
         else:
             raise TypeError(
                 "text should be one of str, Text, MentionText, EquationText.")
+        self.is_modified = True
 
+    @classmethod
+    def new(cls, id: str, text: str=""):
+        c = cls(id=id, type="rich_text", rich_text=[])
+        if text:
+            c.set_text(text)
+        return c
 
 class Relation(BasePageProperty):
     type: Literal["relation"]
@@ -236,13 +284,13 @@ class Relation(BasePageProperty):
             if has_more:
                 start_cursor = query_finder(r["next_url"])
         return self
-    
+
     @staticmethod
     def get_notion_object(obj):
-        if isinstance(page, Page):
-            return NotionObjectModel(id=page.id)
-        elif isinstance(page, str):
-            return NotionObjectModel(id=page)
+        if isinstance(obj, Page):
+            return NotionObjectModel(id=obj.id)
+        elif isinstance(obj, str):
+            return NotionObjectModel(id=obj)
         else:
             raise TypeError("page shhould be one of str, Page")
 
@@ -252,19 +300,22 @@ class Relation(BasePageProperty):
         parent_db = cache.databases.get(self.belong_to.relation.database_id)
         if parent_db and page in [NotionObjectModel(p.id) for p in parent_db.pages.values()]:
             self.relation.append(page)
+        self.is_modified = True
         return self
 
     def delete_page(self, page: Page | str = None):
         try:
             self.relation.remove(self.get_notion_object(page))
+            self.is_modified = True
         except ValueError:
             pass
         return self
-    
+
     def clear_pages(self):
         self.relation = []
+        self.is_modified = True
         return self
-    
+
     def add_pages(self, pages: list[Page | str]):
         for i in pages:
             try:
@@ -273,58 +324,166 @@ class Relation(BasePageProperty):
                 pass
         return self
 
+    @classmethod
+    def new(cls, id: str, pages: list[Page | str]=[]):
+        c = cls(id=id, type="relation", pages=[])
+        if pages:
+            c.add_pages(pages)
+        return c
+
+class RollupArray(ArrayTypeObject):
+    function: RollupFunctionType
+
+
 class Rollup(BasePageProperty):
     type: Literal["rollup"]
-    # TODO
+    rollup: RollupArray
+    editable = False
 
 
 class Checkbox(BasePageProperty):
     type: Literal["checkbox"]
     checkbox: bool
 
+    @classmethod
+    def new(cls, id: str, check: bool=False):
+        return cls(id=id, type="checkbox", checkbox=check)
+
 
 class Date(BasePageProperty):
     type: Literal["date"]
     date: DateObject | None
+
+    @property
+    def start(self):
+        return self.date.start
+
+    @property
+    def end(self):
+        return self.date.end
+
+    @property
+    def time_zone(self):
+        return self.date.time_zone
+
+    @start.setter
+    def start(self, v):
+        if self.date is None:
+            self.date = DateObject.new(start=v)
+        else:
+            self.date.start = v
+        self.is_modified = True
+
+    @end.setter
+    def end(self, v):
+        if self.date is None:
+            raise ValueError("please specify start time first")
+        else:
+            self.date.end = v
+        self.is_modified = True
+
+    @time_zone.setter
+    def time_zone(self, v):
+        if self.date is None:
+            raise ValueError("please specify start time first")
+        else:
+            self.date.time_zone = v
+        self.is_modified = True
+
+    def reschedule(self, td):
+        if not isinstance(td, timedelta):
+            raise TypeError("argument should be type of datetime.timedelta")
+        self.start = self.start+td
+        self.end = self.end+td
+        self.is_modified = True
+    
+    @classmethod
+    def new(cls, 
+            id: str, 
+            start: dt | None=None, 
+            end: dt | None=None, 
+            time_zone: str | None=None
+            ):
+        c = cls(id=id, type="date", date=None)
+        c.start=start
+        c.end=end
+        c.time_zone=time_zone
+        return c
 
 
 class Email(BasePageProperty):
     type: Literal["email"]
     email: EmailStr | None
 
+    @classmethod
+    def new(cls, id: str, email: str=None):
+        c = cls(id=id, type="email", email=email)
+        if email:
+            c.email = email
+        return c
+
 
 class Files(BasePageProperty):
     type: Literal["files"]
     files: list[File]
 
+    def add_file(self, url: str):
+        if len(urlparse(url).scheme):
+            self.url = ExternalFile.new(url=url)
+        else:
+            raise ValueError(
+                "Provided string is not valid url")
+    
+    @classmethod
+    def new(cls, id: str, file: str=None):
+        c = cls(id=id, type="files", files=[])
+        if file:
+            c.add_file(file)
+        return c
 
 class Formula(BasePageProperty):
     """ uneditable """
     type: Literal["formula"]
     formula: FormulaValues
+    editable = False
 
 
 class Number(BasePageProperty):
     type: Literal["number"]
     number: int | float | None
 
+    @classmethod
+    def new(cls, id: str, number: int | float | None=None):
+        return cls(id=id, type="number", number=number)
+
 
 class People(BasePageProperty):
     type: Literal["people"]
     people: list[User]
+
+    @classmethod
+    def new(cls, id: str, people: list[User]=[]):
+        return cls(id=id, type="people", people=[])
 
 
 class PhoneNumber(BasePageProperty):
     type: Literal["phone_number"]
     phone_number: str | None
 
-
+    @classmethod
+    def new(cls, id: str, phone_number: str=None):
+        return cls(id=id, type="phone_number", phone_number=phone_number)
+    
 class Url(BasePageProperty):
     type: Literal["url"]
     url: HttpUrl | None
 
     def get_value(self):
         return str(super().get_value())
+    
+    @classmethod
+    def new(cls, id:str, url: str = None):
+        return cls(id=id, type="url", url=url)
 
 
 PageProperty = Union[
@@ -349,3 +508,26 @@ PageProperty = Union[
     Title,
     Url,
 ]
+
+name_class_link = {
+    "checkbox": Checkbox,
+    "created_by": CreatedBy,
+    "created_time": CreatedTime,
+    "date": Date,
+    "email": Email,
+    "files": Files,
+    "formula": Formula,
+    "last_edited_by": LastEditedBy,
+    "last_edited_time": LastEditedTime,
+    "multi_select": MultiSelect,
+    "number": Number,
+    "people": People,
+    "phone_number": PhoneNumber,
+    "relation": Relation,
+    "rollup": Rollup,
+    "rich_text": RichText,
+    "select": Select,
+    "status": Status,
+    "title": Title,
+    "url": Url,
+}

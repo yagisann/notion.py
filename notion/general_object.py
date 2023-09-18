@@ -6,6 +6,7 @@ from pydantic import EmailStr, HttpUrl, BaseModel
 from .base_model import NotionBaseModel
 from .enums import Color
 from .exceptions import UnUpdatableError
+from typing import Literal, Any
 from datetime import datetime as dt
 
 __all__ = (
@@ -146,3 +147,14 @@ class StatusOptions(NotionBaseModel):
     @classmethod
     def new(cls):
         return {}
+
+class ArrayTypeObject(NotionBaseModel):
+    type: Literal["array"]
+    array: list[Any]
+
+class ListObject(NotionBaseModel):
+    """ pagenation objects"""
+    object: Literal["list"]
+    results: list[Any]
+    next_cursor: None | HttpUrl
+    has_more: bool
