@@ -12,7 +12,7 @@ from .parent import Parent, DatabaseParent, PageParent, BlockParent
 from .rich_text import RichText, Text
 
 from pydantic import field_validator, HttpUrl
-from emoji import UNICODE_EMOJI
+import emoji
 from typing import Literal
 from urllib.parse import urlparse
 
@@ -50,7 +50,7 @@ class DatabaseDraft(NotionBaseModel):
     @classmethod
     def icon_validate(cls, value):
         if isinstance(value, str):
-            if value in UNICODE_EMOJI:
+            if emoji.is_emoji(value):
                 return Emoji.new(emoji=value)
             elif len(urlparse(value).scheme):
                 return ExternalFile.new(url=value)
@@ -86,7 +86,7 @@ class DatabaseDraft(NotionBaseModel):
                 excpt.append(TypeError("description sould be str."))
         if icon is not Ellipsis:
             if isinstance(icon, str):
-                if icon in UNICODE_EMOJI:
+                if emoji.is_emoji(icon):
                     self.emoji = Emoji.new(emoji=icon)
                 elif len(urlparse(icon).scheme):
                     self.emoji = ExternalFile.new(url=icon)
@@ -177,7 +177,7 @@ class PageDraft(NotionBaseModel):
     @classmethod
     def icon_validate(cls, value):
         if isinstance(value, str):
-            if value in UNICODE_EMOJI:
+            if emoji.is_emoji(value):
                 return Emoji.new(emoji=value)
             elif len(urlparse(value).scheme):
                 return ExternalFile.new(url=value)
@@ -209,7 +209,7 @@ class PageDraft(NotionBaseModel):
             self.archived = bool(archived)
         if icon is not Ellipsis:
             if isinstance(icon, str):
-                if icon in UNICODE_EMOJI:
+                if emoji.is_emoji(icon):
                     self.emoji = Emoji.new(emoji=icon)
                 elif len(urlparse(icon).scheme):
                     self.emoji = ExternalFile.new(url=icon)

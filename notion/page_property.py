@@ -338,7 +338,7 @@ class RollupArray(ArrayTypeObject):
 class Rollup(BasePageProperty):
     type: Literal["rollup"]
     rollup: RollupArray
-    editable = False
+    editable: bool = False
 
 
 class Checkbox(BasePageProperty):
@@ -445,7 +445,7 @@ class Formula(BasePageProperty):
     """ uneditable """
     type: Literal["formula"]
     formula: FormulaValues
-    editable = False
+    editable: bool = False
 
 
 class Number(BasePageProperty):

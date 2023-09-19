@@ -16,7 +16,7 @@ from .file import ExternalFile, File
 from .emoji import Emoji
 from .database_property import DatabaseProperty
 
-from emoji import UNICODE_EMOJI
+import emoji
 from urllib.parse import urlparse
 from typing import Literal, Any, TYPE_CHECKING
 from datetime import datetime as dt
@@ -89,7 +89,7 @@ class Database(NotionObjectModel):
                 excpt.append(TypeError("description sould be str."))
         if icon is not Ellipsis:
             if isinstance(icon, str):
-                if icon in UNICODE_EMOJI:
+                if emoji.is_emoji(icon):
                     self.emoji = Emoji.new(emoji=icon)
                 elif len(urlparse(icon).scheme):
                     self.emoji = ExternalFile.new(url=icon)

@@ -16,7 +16,7 @@ from typing import Literal
 from datetime import datetime as dt
 from .page_property import PageProperty
 
-from emoji import UNICODE_EMOJI
+import emoji
 from urllib.parse import urlparse
 
 __all__ = (
@@ -85,7 +85,7 @@ class Page(NotionObjectModel):
             self.archived = bool(archived)
         if icon is not Ellipsis:
             if isinstance(icon, str):
-                if icon in UNICODE_EMOJI:
+                if emoji.is_emoji(icon):
                     self.emoji = Emoji.new(emoji=icon)
                 elif len(urlparse(icon).scheme):
                     self.emoji = ExternalFile.new(url=icon)
