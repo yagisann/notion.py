@@ -14,7 +14,7 @@ from .user import User
 from .file import File, ExternalFile
 from .rich_text import Text, RichText as RichTextUnion
 from .utils import query_finder
-from typing import Literal, Union, TYPE_CHECKING
+from typing import Literal, Union, TYPE_CHECKING, Any
 from datetime import datetime as dt, timedelta
 from urllib.parse import urlparse
 
@@ -52,21 +52,27 @@ FormulaValues = Union[
 
 class BasePageProperty(NotionBaseModel):
     id: str
-    editable: bool = True
+
+    editable: bool = Field(default=True, exclude=True)
     is_paginated: bool = Field(default=False, exclude=True)
-    is_modified: bool = Field(default=False, exclde=True)
+    is_modified: bool = Field(default=False, exclude=True)
+    initialized: bool = Field(default=False, exclude=True)
+    parent: Any = Field(default=None, exclude=True, repr=False)
+    belong_to: Any = Field(default=None, exclude=True, repr=False)
 
     def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs)
-        self.parent = None
-        self.belong_to = None
         self.find_column()
+        self.initialized = True
     
     def __setattr__(self, key, value):
-        if not self.editable:
+        if not self.editable and self.initialized:
             raise UnUpdatableError()
-        super().__setattr__(key, value)
-        self.is_modified = True
+        if self.initialized:
+            super().__setattr__("is_modified", True)
+        if key != "is_modified":
+            super().__setattr__(key, value)
+
 
     def get_value(self):
         return self.__getattribute__(self.type)
@@ -75,11 +81,12 @@ class BasePageProperty(NotionBaseModel):
         return self.model_dump()
     
     def set_parent(self, parent: Page):
-        self.parent = parent
+        super().__setattr__("parent", parent)
 
     def find_column(self):
-        from .cache import cache
-        self.belong_to = cache.columns.get(self.id)
+        if self.belong_to is None:
+            from .cache import cache
+            super().__setattr__("belong_to", cache.columns.get(self.id))
 
 
 class CreatedBy(BasePageProperty):
@@ -112,7 +119,7 @@ class LastEditedTime(BasePageProperty):
 
 class MultiSelect(BasePageProperty):
     type: Literal["multi_select"]
-    multi_select: list[SelectOption]
+    multi_select: list[SelectOption | PartialSelectOption]
 
     def get_value(self):
         return [i.name for i in super().get_value()]
@@ -140,15 +147,15 @@ class MultiSelect(BasePageProperty):
         self.is_modified = True
     
     @classmethod
-    def new(cls, id: str, options: list[str]=[]):
-        c = cls(id=id, type="multi_select", multi_select=[])
+    def new(cls, id: str, options: list[str]=[], belong_to: Any=None):
+        c = cls(id=id, type="multi_select", multi_select=[], belong_to=belong_to)
         c.set_options(options)
         return c
 
 
 class Select(BasePageProperty):
     type: Literal["select"]
-    select: SelectOption | None
+    select: SelectOption | PartialSelectOption | None
 
     def get_value(self):
         val = super().get_value()
@@ -174,9 +181,9 @@ class Select(BasePageProperty):
         self.is_modified = True
 
     @classmethod
-    def new(cls, id: str, option: str=None):
-        c = cls(id=id, type="select", select=None)
-        if c is not None:
+    def new(cls, id: str, option: str=None, belong_to: Any=None):
+        c = cls(id=id, type="select", select=None, belong_to=belong_to)
+        if option is not None:
             c.set_option(option)
         return c
 
@@ -208,9 +215,9 @@ class Status(BasePageProperty):
         self.is_modified = True
 
     @classmethod
-    def new(cls, id: str, status: str=None):
-        c = cls(id=id, type="status", status=None)
-        if c is not None:
+    def new(cls, id: str, status: str=None, belong_to: Any=None):
+        c = cls(id=id, type="status", status=None, belong_to=belong_to)
+        if status is not None:
             c.set_status(status)
         return c
     
@@ -224,15 +231,15 @@ class Title(BasePageProperty):
 
     def set_text(self, text: str):
         if isinstance(text, str):
-            self.title = Text.new(text)
+            self.title = [Text.new(text)]
         elif isinstance(text, Text):
-            self.title = text
+            self.title = [text]
         else:
             raise TypeError("text should be one of str, Text")
         self.is_modified = True
 
     @classmethod
-    def new(cls, id: str, title: str="title"):
+    def new(cls, id: str, title: str="title", belong_to: Any=None):
         c = cls(id=id, type="title", title=[])
         c.set_text(title)
         return c
@@ -246,24 +253,24 @@ class RichText(BasePageProperty):
 
     def set_text(self, text: str):
         if isinstance(text, str):
-            self.title = Text.new(text)
+            self.rich_text = [Text.new(text)]
         elif isinstance(text, RichTextUnion):
-            self.title = text
+            self.rich_text = [text]
         else:
             raise TypeError(
                 "text should be one of str, Text, MentionText, EquationText.")
         self.is_modified = True
 
     @classmethod
-    def new(cls, id: str, text: str=""):
-        c = cls(id=id, type="rich_text", rich_text=[])
+    def new(cls, id: str, text: str="", belong_to: Any=None):
+        c = cls(id=id, type="rich_text", rich_text=[], belong_to=belong_to)
         if text:
             c.set_text(text)
         return c
 
 class Relation(BasePageProperty):
     type: Literal["relation"]
-    has_more: bool
+    has_more: bool = Field(exclude=True)
     # page relation object that contain id of page
     relation: list[NotionObjectModel]
     is_paginated: bool = True
@@ -325,8 +332,8 @@ class Relation(BasePageProperty):
         return self
 
     @classmethod
-    def new(cls, id: str, pages: list[Page | str]=[]):
-        c = cls(id=id, type="relation", pages=[])
+    def new(cls, id: str, pages: list[Page | str]=[], belong_to: Any=None):
+        c = cls(id=id, type="relation", relation=[], has_more=False, belong_to=belong_to)
         if pages:
             c.add_pages(pages)
         return c
@@ -346,8 +353,8 @@ class Checkbox(BasePageProperty):
     checkbox: bool
 
     @classmethod
-    def new(cls, id: str, check: bool=False):
-        return cls(id=id, type="checkbox", checkbox=check)
+    def new(cls, id: str, check: bool=False, belong_to: Any=None):
+        return cls(id=id, type="checkbox", checkbox=check, belong_to=belong_to)
 
 
 class Date(BasePageProperty):
@@ -402,12 +409,14 @@ class Date(BasePageProperty):
             id: str, 
             start: dt | None=None, 
             end: dt | None=None, 
-            time_zone: str | None=None
+            time_zone: str | None=None,
+            belong_to: Any=None
             ):
-        c = cls(id=id, type="date", date=None)
-        c.start=start
-        c.end=end
-        c.time_zone=time_zone
+        c = cls(id=id, type="date", date=None, belong_to=belong_to)
+        if start is not None:
+            c.start=start
+            c.end=end
+            c.time_zone=time_zone
         return c
 
 
@@ -416,8 +425,8 @@ class Email(BasePageProperty):
     email: EmailStr | None
 
     @classmethod
-    def new(cls, id: str, email: str=None):
-        c = cls(id=id, type="email", email=email)
+    def new(cls, id: str, email: str=None, belong_to: Any=None):
+        c = cls(id=id, type="email", email=email, belong_to=belong_to)
         if email:
             c.email = email
         return c
@@ -435,8 +444,8 @@ class Files(BasePageProperty):
                 "Provided string is not valid url")
     
     @classmethod
-    def new(cls, id: str, file: str=None):
-        c = cls(id=id, type="files", files=[])
+    def new(cls, id: str, file: str=None, belong_to: Any=None):
+        c = cls(id=id, type="files", files=[], belong_to=belong_to)
         if file:
             c.add_file(file)
         return c
@@ -453,8 +462,8 @@ class Number(BasePageProperty):
     number: int | float | None
 
     @classmethod
-    def new(cls, id: str, number: int | float | None=None):
-        return cls(id=id, type="number", number=number)
+    def new(cls, id: str, number: int | float | None=None, belong_to: Any=None):
+        return cls(id=id, type="number", number=number, belong_to=belong_to)
 
 
 class People(BasePageProperty):
@@ -462,8 +471,8 @@ class People(BasePageProperty):
     people: list[User]
 
     @classmethod
-    def new(cls, id: str, people: list[User]=[]):
-        return cls(id=id, type="people", people=[])
+    def new(cls, id: str, people: list[User]=[], belong_to: Any=None):
+        return cls(id=id, type="people", people=[], belong_to=belong_to)
 
 
 class PhoneNumber(BasePageProperty):
@@ -471,8 +480,8 @@ class PhoneNumber(BasePageProperty):
     phone_number: str | None
 
     @classmethod
-    def new(cls, id: str, phone_number: str=None):
-        return cls(id=id, type="phone_number", phone_number=phone_number)
+    def new(cls, id: str, phone_number: str=None, belong_to: Any=None):
+        return cls(id=id, type="phone_number", phone_number=phone_number, belong_to=belong_to)
     
 class Url(BasePageProperty):
     type: Literal["url"]
@@ -482,8 +491,8 @@ class Url(BasePageProperty):
         return str(super().get_value())
     
     @classmethod
-    def new(cls, id:str, url: str = None):
-        return cls(id=id, type="url", url=url)
+    def new(cls, id:str, url: str = None, belong_to: Any=None):
+        return cls(id=id, type="url", url=url, belong_to=belong_to)
 
 
 PageProperty = Union[

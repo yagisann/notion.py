@@ -4,15 +4,14 @@ Page objects
 https://developers.notion.com/reference/page
 """
 
-from pydantic import HttpUrl, field_validator
+from pydantic import HttpUrl, Field
 from .base_model import NotionObjectModel
 from .exceptions import NotionValidationError
-from .rich_text import Text
 from .parent import Parent
 from .user import User
 from .file import ExternalFile
 from .emoji import Emoji
-from typing import Literal
+from typing import Literal, Any
 from datetime import datetime as dt
 from .page_property import PageProperty
 
@@ -37,6 +36,9 @@ class Page(NotionObjectModel):
     url: HttpUrl
     public_url: None | HttpUrl
     properties: dict[str, PageProperty]
+
+    client: Any = Field(default=None, exclude=True, repr=False)
+    cache: Any = Field(default=None, exclude=True, repr=False)
 
     def __init__(self, *, client, **kwargs):
         super().__init__(**kwargs)
@@ -66,6 +68,9 @@ class Page(NotionObjectModel):
         for field in self.model_fields.keys():
             if data.get(field):
                 self.__setattr__(field, data.get(field))
+    
+    def get_title(self):
+        return [i.get_value() for i in self.properties.values() if i.type=="title"][0]
 
     def edit(
         self,
@@ -86,9 +91,9 @@ class Page(NotionObjectModel):
         if icon is not Ellipsis:
             if isinstance(icon, str):
                 if emoji.is_emoji(icon):
-                    self.emoji = Emoji.new(emoji=icon)
+                    self.icon = Emoji.new(emoji=icon)
                 elif len(urlparse(icon).scheme):
-                    self.emoji = ExternalFile.new(url=icon)
+                    self.icon = ExternalFile.new(url=icon)
                 else:
                     excpt.append(ValueError(
                         "Provided string is not valid url or emoji"))
@@ -120,14 +125,14 @@ class Page(NotionObjectModel):
         icon: str = Ellipsis,
         cover: str = Ellipsis,
     ):
-        self.update(title=title, archived=archived, icon=icon, cover=cover)
+        self.edit(title=title, archived=archived, icon=icon, cover=cover)
         properties = {}
         for name, column in self.properties.items():
             if column.is_modified:
                 properties[name] = column.build()
         dump = self.model_dump()
         payload = {
-            "page_id": dump["page_id"],
+            "page_id": dump["id"],
             "archived": dump["archived"],
             "icon": dump["icon"],
             "cover": dump["cover"],

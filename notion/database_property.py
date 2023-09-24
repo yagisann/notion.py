@@ -9,7 +9,7 @@ from pydantic import field_validator, UUID4, Field
 from .base_model import NotionBaseModel
 from .enums import Color, RollupFunctionType
 from .general_object import EmptyObject, SelectOptionList, StatusOptions
-from typing import Literal, Union, Any
+from typing import Literal, Union, Any, ClassVar
 from enum import Enum
 
 
@@ -116,6 +116,7 @@ class BaseDbProperty(NotionBaseModel):
     rename: None | str = Field(default=None, min_length=1, exclude=True)
     remove: None | bool = Field(default=None, exclude=True)
     is_modified: bool = Field(default=False, exclude=True)
+    is_title: ClassVar[bool] = False
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -124,20 +125,23 @@ class BaseDbProperty(NotionBaseModel):
     def check_is_modified(self):
         if self.rename is not None:
             self.is_modified = True
-        if self.remomve is not None:
+        if self.remove is not None:
             self.is_modified = True
 
     @field_validator("remove")
     @classmethod
     def remove_validate(cls, value):
-        if (cls.name == "title") and (value):
+        if (cls.is_title) and (value):
             raise ValueError("Title cannot be removed")
         return value
 
     def build(self):
         if self.remove:
             return None
-        payload = {self.name: self.get_payload()}
+        payload = {
+            "type": self.type,
+            self.type: self.get_payload()
+        }
         if self.rename:
             payload["name"] = self.rename
         return payload
@@ -201,6 +205,10 @@ class MultiSelect(BaseDbProperty):
         self.multi_select.append(name, color)
         self.is_modified = True
         return self
+    
+    def add_options(self, options: list):
+        for i in options:
+            self.add_option(i)
 
     def delete_option(self, name: str):
         self.multi_select.delete(name)
@@ -209,7 +217,12 @@ class MultiSelect(BaseDbProperty):
 
     def get_payload(self):
         return self.multi_select.build()
-
+    
+    @classmethod
+    def new(cls, name: str = "", options: list=[]):
+        c = cls(**cls._new.default, id="", name=name, is_modified=True)
+        c.add_options(options)
+        return c
 
 class Select(BaseDbProperty):
     type: Literal["select"]
@@ -226,6 +239,10 @@ class Select(BaseDbProperty):
         self.select.append(name, color)
         self.is_modified = True
         return self
+    
+    def add_options(self, options: list):
+        for i in options:
+            self.add_option(i)
 
     def delete_option(self, name: str):
         self.select.delete(name)
@@ -235,7 +252,12 @@ class Select(BaseDbProperty):
     def get_payload(self):
         return self.select.build()
 
-
+    @classmethod
+    def new(cls, name: str = "", options: list=[]):
+        c = cls(**cls._new.default, id="", name=name, is_modified=True)
+        c.add_options(options)
+        return c
+    
 class Status(BaseDbProperty):
     type: Literal["status"]
     status: StatusOptions
@@ -252,6 +274,8 @@ class Status(BaseDbProperty):
 class Title(BaseDbProperty):
     type: Literal["title"]
     title: EmptyObject
+    is_title: ClassVar[bool] = True
+
     _new: Any = {
         "type": "title",
         "title": {}
@@ -416,7 +440,7 @@ class Number(BaseDbProperty):
 
     @classmethod
     def new(cls, format: str | NumberFormatType = "number"):
-        return super().new().set_formula(format)
+        return super().new().set_format(format)
 
 
 class People(BaseDbProperty):

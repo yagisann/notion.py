@@ -54,6 +54,7 @@ class NotionBaseModel(BaseModel):
         if _info.include is not None:
             return {i: json_decoder(self.__getattribute__(i)) for i in _info.include}
         exclude = [] if _info.exclude is None else _info.exclude
+        exclude += [f for f, i in self.model_fields.items() if i.exclude==True]
         return {i: json_decoder(self.__getattribute__(i)) for i in self.model_fields_set if i not in exclude}
 
 

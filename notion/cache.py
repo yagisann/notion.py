@@ -35,7 +35,7 @@ class CachedObjects:
         if not isinstance(obj, self.valid_types):
             raise TypeError(
                 f"No valid object was provided to cache.\nAcceptable: {self.valid_types},  provided: {type(obj)}")
-        self.objects[str(obj.model.id).replace("-", "")] = obj
+        self.objects[str(obj.id).replace("-", "")] = obj
 
     def get(self, obj_id):
         try:

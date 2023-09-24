@@ -14,7 +14,7 @@ from .page import Page
 from .user import User
 from .file import ExternalFile, File
 from .emoji import Emoji
-from .database_property import DatabaseProperty
+from .database_property import DatabaseProperty, Title
 
 import emoji
 from urllib.parse import urlparse
@@ -23,7 +23,6 @@ from datetime import datetime as dt
 
 if TYPE_CHECKING:
     from .draft import PageDraft
-
 
 __all__ = (
     "Database",
@@ -46,14 +45,16 @@ class Database(NotionObjectModel):
     public_url: None | HttpUrl
     properties: dict[str, DatabaseProperty]
 
-    pages: dict[Any, Any] = Field(default=dict(), exclude=True)
+    pages: dict[Any, Any] = Field(default=dict(), exclude=True, repr=False)
+    client: Any = Field(default=None, exclude=True, repr=False)
+    cache: Any = Field(default=None, exclude=True, repr=False)
+    page_key_callback: Any = Field(default=lambda page: page.id, exclude=True, repr=False)
 
     def __init__(self, *, client, **kwargs):
         super().__init__(**kwargs)
         self.client = client
         self.cache = client.cache
         self.cache.databases.add(self)
-        self.page_key_callback = lambda page: page.id
 
     def __getitem__(self, v):
         try:
@@ -90,9 +91,9 @@ class Database(NotionObjectModel):
         if icon is not Ellipsis:
             if isinstance(icon, str):
                 if emoji.is_emoji(icon):
-                    self.emoji = Emoji.new(emoji=icon)
+                    self.icon = Emoji.new(emoji=icon)
                 elif len(urlparse(icon).scheme):
-                    self.emoji = ExternalFile.new(url=icon)
+                    self.icon = ExternalFile.new(url=icon)
                 else:
                     excpt.append(ValueError(
                         "Provided string is not valid url or emoji"))
@@ -123,8 +124,10 @@ class Database(NotionObjectModel):
             raise TypeError("name should be string")
         if not isinstance(column, DatabaseProperty):
             raise TypeError("property should be proper DatabaseProperty")
+        if isinstance(column, Title):
+            raise TypeError("Title column already exist.")
         column.is_modified = True
-        self.properties[name] = column
+        self.properties.update({name:column})
         return self
 
     async def update(
@@ -142,7 +145,7 @@ class Database(NotionObjectModel):
         for name, column in self.properties.items():
             column.check_is_modified()
             if column.is_modified:
-                properties[name] = column.build
+                properties[name] = column.build()
         dump = self.model_dump()
         payload = {
             "database_id": dump["id"],

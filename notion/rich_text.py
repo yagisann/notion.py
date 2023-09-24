@@ -218,7 +218,7 @@ class Text(BaseRichText):
     def new(cls, text: str = "", url=None):
         return cls(
             annotations=Annotation(),
-            plain_text=str,
+            plain_text=text,
             href=None,
             type="text",
             text=TextContent.new(text, url),

@@ -2,16 +2,16 @@ from __future__ import annotations
 
 from .base_model import NotionBaseModel
 from .database import Database
-from .database_property import DatabaseProperty
+from .database_property import DatabaseProperty, Title as TitleColumn
 from .emoji import Emoji
 from .exceptions import NotionValidationError
 from .file import File, ExternalFile
 from .page import Page
-from .page_property import PageProperty, name_class_link
+from .page_property import PageProperty, name_class_link, Title
 from .parent import Parent, DatabaseParent, PageParent, BlockParent
 from .rich_text import RichText, Text
 
-from pydantic import field_validator, HttpUrl
+from pydantic import field_validator, Field
 import emoji
 from typing import Literal
 from urllib.parse import urlparse
@@ -24,17 +24,34 @@ class DatabaseDraft(NotionBaseModel):
     icon: str | File | Emoji | None = None
     cover: str | ExternalFile | None = None
     is_inline: bool = True
-    properties: dict[str, DatabaseProperty] = {}
+    properties: dict[str, DatabaseProperty] = None
+
+    def __init__(self, **kwargs) -> None:
+        super().__init__(**kwargs)
+        if self.properties is None:
+            self.properties = {"title": TitleColumn.new()}
+
+    @field_validator("properties")
+    @classmethod
+    def properties_validate(cls, value):
+        if value is None:
+            return {"title": TitleColumn.new()}
+        if isinstance(value, dict):
+            if [i for i in value.values() if i.type=="title"]:
+                return value
+            else:
+                value["title"] = TitleColumn.new()
+                return value
 
     @field_validator("parent")
     @classmethod
     def parent_validate(cls, value):
         if isinstance(value, Database):
-            return DatabaseParent.new(value.id)
+            return DatabaseParent.new(str(value.id))
         elif isinstance(value, Page):
-            return PageParent.new(value.id)
+            return PageParent.new(str(value.id))
         # TODO: elif isinnstance(value, Block):
-        # TODO:     return BlockParent.new(value.id)
+        # TODO:     return BlockParent.new(str(value.id))
         return value
 
     @field_validator("title", "description")
@@ -120,7 +137,7 @@ class DatabaseDraft(NotionBaseModel):
         return db
 
 class PageDraft(NotionBaseModel):
-    title: str | RichText | list[RichText]
+    title: str | RichText | list[RichText] = Field(exclude=True)
     object: Literal["page"] = "page"
     archived: bool = False
     icon: None | ExternalFile | Emoji | str = None
@@ -131,16 +148,19 @@ class PageDraft(NotionBaseModel):
     parent_database: Database = None
 
     def __init__(self, **kwargs):
+        p = kwargs.get("parent")
         super().__init__(**kwargs)
-        if self.parent_database is None:
+        if isinstance(p, Database):
+            generated = self.generate_properties_from(p)
+            self.properties = generated
+            [i for i in self.properties.values() if i.type == "title"][0].title = self.title
+        else:
             if title_column := [(i,j) for i, j in self.properties.items() if j.type == "title"]:
                 self.properties[title_column[0][0]].title = self.title
             else:
-                self.properties["title"].title = self.title
-        else:
-            generated = self.generate_properties_from(self.parent_database)
-            self.properties = generated
-            [i for i in self.properties.items() if i.type == "title"][0].title = self.title
+                title_value = Title.new(id="title")
+                title_value.title = self.title
+                self.properties = {"title": title_value}
     
     @staticmethod
     def generate_properties_from(database: Database):
@@ -149,19 +169,19 @@ class PageDraft(NotionBaseModel):
             target_class = name_class_link[column.type]
             if not target_class.model_fields["editable"].default:
                 continue
-            generated[name] = target_class.new(id=column.id)
+            generated[name] = target_class.new(id=column.id, belong_to=column)
         return generated
 
 
     @field_validator("parent")
     @classmethod
-    def parent_validate(cls, value):
+    def parent_formater(cls, value):
         if isinstance(value, Database):
-            return DatabaseParent.new(value.id)
+            return DatabaseParent.new(str(value.id))
         elif isinstance(value, Page):
-            return PageParent.new(value.id)
+            return PageParent.new(str(value.id))
         # TODO: elif isinnstance(value, Block):
-        # TODO:     return BlockParent.new(value.id)
+        # TODO:     return BlockParent.new(str(value.id))
         return value
 
     @field_validator("title")
@@ -235,3 +255,7 @@ class PageDraft(NotionBaseModel):
             raise NotionValidationError(ex)
 
         return self
+    
+    async def create(self, client):
+        page = await client.create_page(draft=self)
+        return page
