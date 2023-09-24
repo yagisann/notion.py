@@ -39,6 +39,7 @@ async def main():
         title="this is example page",     # required
         parent=db,                        # required
     )
+    new_page = await draft.create(client)
 
 if __name__=="__main__":
     asyncio.run(main())
